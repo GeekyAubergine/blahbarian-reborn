@@ -32,4 +32,9 @@ export class World {
       entity.update(game, this, dt, events);
     }
   }
+
+  addEntity(entity: Entity) {
+    this.entities.push(entity);
+    console.log("Added entity", entity);
+  }
 }

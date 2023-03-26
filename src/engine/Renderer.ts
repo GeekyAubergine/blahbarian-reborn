@@ -1,8 +1,10 @@
 import {
+  Animation,
   AnimationDefinition,
   AnimationTemplate,
   SpriteSheetAndAnimations,
 } from "./Animation";
+import { TILE_SIZE } from "./Constants";
 import { Game } from "./Game";
 import { SpriteSheet } from "./SpriteSheet";
 import { Vector } from "./Vector";
@@ -37,8 +39,16 @@ export class Renderer {
     await Promise.all(promises);
   }
 
-  findAnimation(id: string): AnimationTemplate | null {
-    return this.animations[id] ?? null;
+  findAnimation(id: string, now: number): Animation | null {
+    const template = this.animations[id] ?? null;
+
+    console.log({ template });
+
+    if (!template) {
+      throw new Error(`Animation ${id} not found`);
+    }
+
+    return Animation.fromTemplate(template, now);
   }
 
   renderWorld(game: Game, world: World, now: number) {
@@ -46,20 +56,29 @@ export class Renderer {
     const { width, height } = this.canvas;
     const { camera } = game;
 
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = false;
+
     ctx.clearRect(0, 0, width, height);
 
     ctx.fillStyle = "black";
 
-    ctx.fillRect(0, 0, width / 2, height / 3);
+    ctx.fillRect(0, 0, width / 2, height / 2);
 
     ctx.save();
 
-    ctx.translate(width / 2, height / 2);
+    ctx.translate(Math.floor(width / 2), Math.floor(height / 2));
 
     ctx.scale(camera.scale, camera.scale);
 
+    // ctx.translate(
+    //   Math.floor(-camera.position.x),
+    //   Math.floor(-camera.position.y)
+    // );
+
     for (const entity of world.entities) {
-      //   entity.render(this);
+      entity.render(this, now);
     }
 
     world.player.render(this, now);
@@ -96,29 +115,33 @@ export class Renderer {
 
     const rotationInRadians = (rotation * Math.PI) / 180;
 
+    const scaleX = TILE_SIZE / spriteSize.width;
+    const scaleY = TILE_SIZE / spriteSize.height;
+
     ctx.save();
+    // ctx.scale(scaleX, scaleY);
     ctx.translate(
-      position.x - spriteSize.width / 2,
-      position.y - spriteSize.height / 2
+      Math.floor(position.x),
+      Math.floor(position.y)
     );
     ctx.rotate(rotationInRadians);
-    ctx.fillStyle = "red";
-    ctx.fillRect(
-      -rotationPoint.x,
-      -rotationPoint.y,
-      spriteSize.width,
-      spriteSize.height
-    );
+    // ctx.fillStyle = "red";
+    // ctx.fillRect(
+    //   Math.floor(-rotationPoint.x * scaleX),
+    //   Math.floor(-rotationPoint.y * scaleY),
+    //   Math.floor(spriteSize.width * scaleX),
+    //   Math.floor(spriteSize.height * scaleY)
+    // );
     ctx.drawImage(
       spriteSheet.image,
-      sx * spriteSize.width,
-      sy * spriteSize.height,
-      spriteSize.width,
-      spriteSize.height,
-      -rotationPoint.x,
-      -rotationPoint.y,
-      spriteSize.width,
-      spriteSize.height
+      Math.floor(sx * spriteSize.width),
+      Math.floor(sy * spriteSize.height),
+      Math.floor(spriteSize.width),
+      Math.floor(spriteSize.height),
+      Math.floor(-rotationPoint.x * scaleX),
+      Math.floor(-rotationPoint.y * scaleY),
+      Math.floor(spriteSize.width) * scaleX,
+      Math.floor(spriteSize.height * scaleY)
     );
     ctx.restore();
   }

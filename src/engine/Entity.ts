@@ -10,6 +10,7 @@ export class Entity {
   rotation: number;
   velocity: Vector;
   angularVelocity: number;
+  walkingSpeed: number = 1;
 
   constructor(
     id: string,
@@ -27,6 +28,10 @@ export class Entity {
 
   init(game: Game, world: World, renderer: Renderer, now: number) {
     // ...
+  }
+
+  setWalkingSpeed(speed: number) {
+    this.walkingSpeed = speed;
   }
 
   update(game: Game, world: World, dt: number, events: Event[]) {

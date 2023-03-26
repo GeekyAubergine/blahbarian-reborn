@@ -29,6 +29,10 @@ export class Vector {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
+  distance(other: Vector): number {
+    return Math.hypot(this.x - other.x, this.y - other.y);
+  }
+
   normalize(): Vector {
     const mag = this.mag();
     if (mag < NEAR_ZERO) {
@@ -37,5 +41,7 @@ export class Vector {
     return this.div(mag);
   }
 
-  
+  toString(): string {
+    return `Vector(${this.x}, ${this.y})`;
+  }
 }

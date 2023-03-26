@@ -4,6 +4,10 @@ import { Renderer } from "./engine/Renderer";
 import { SpriteSheet } from "./engine/SpriteSheet";
 import { SpriteSheetAndAnimations } from "./engine/Animation";
 import { Game } from "./engine/Game";
+import { WARDROBE_SPRITE_SHEET_AND_ANIMATIONS } from "./assets/wardrobe";
+import { EnemyWardrobe } from "./engine/enemies/EnemyWardrobe";
+import { Vector } from "./engine/Vector";
+import { TILE_SIZE } from "./engine/Constants";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
 let game: Game | null = null;
@@ -32,6 +36,14 @@ async function initializeRenderer(): Promise<Renderer> {
     )
   );
 
+  renderer.addSpriteSheetAndAnimations(
+    "wardrobe",
+    SpriteSheetAndAnimations.fromDefinition(
+      "wardrobe",
+      WARDROBE_SPRITE_SHEET_AND_ANIMATIONS
+    )
+  );
+
   await renderer.loadSpriteSheets();
 
   return renderer;
@@ -41,6 +53,10 @@ async function initialize(): Promise<void> {
   const renderer = await initializeRenderer();
 
   const g = new Game(renderer);
+
+  g.world.addEntity(
+    new EnemyWardrobe("wardobe-1", new Vector(4 * TILE_SIZE, 0), 0, new Vector(-32, 0), 0)
+  );
 
   await g.init(Date.now() / 1000);
 
@@ -55,9 +71,7 @@ function tick() {
 
   const now = Date.now() / 1000;
 
-  // console.log({ now })
-
-  const dt = (now - lastTick);
+  const dt = now - lastTick;
 
   if (!game) {
     window.requestAnimationFrame(tick);

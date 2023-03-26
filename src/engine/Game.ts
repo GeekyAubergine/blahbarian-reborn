@@ -25,6 +25,7 @@ export class Game {
 
   update(dt: number) {
     this.world.update(this, dt, this.events);
+    this.camera.update(this, this.world, dt);
     this.events = [];
   }
 

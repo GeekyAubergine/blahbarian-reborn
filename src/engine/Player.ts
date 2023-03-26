@@ -14,38 +14,13 @@ export class Player extends Entity {
   rightAnimation: Animation | null = null;
 
   init(game: Game, world: World, renderer: Renderer, now: number) {
-    const idleAnimationTemplate = renderer.findAnimation("shark-idle");
-    const downAnimationTemplate = renderer.findAnimation("shark-down");
-    const upAnimationTemplate = renderer.findAnimation("shark-up");
-    const leftAnimationTemplate = renderer.findAnimation("shark-left");
-    const rightAnimationTemplate = renderer.findAnimation("shark-right");
-
-    if (!idleAnimationTemplate) {
-      throw new Error("Could not find shark-idle animation");
-    }
-
-    if (!downAnimationTemplate) {
-      throw new Error("Could not find shark-down animation");
-    }
-
-    if (!upAnimationTemplate) {
-      throw new Error("Could not find shark-up animation");
-    }
-
-    if (!leftAnimationTemplate) {
-      throw new Error("Could not find shark-left animation");
-    }
-
-    if (!rightAnimationTemplate) {
-      throw new Error("Could not find shark-right animation");
-    }
-
-    this.animation = Animation.fromTemplate(idleAnimationTemplate, now);
-    this.idleAnimation = this.animation;
-    this.downAnimation = Animation.fromTemplate(downAnimationTemplate, now);
-    this.upAnimation = Animation.fromTemplate(upAnimationTemplate, now);
-    this.leftAnimation = Animation.fromTemplate(leftAnimationTemplate, now);
-    this.rightAnimation = Animation.fromTemplate(rightAnimationTemplate, now);
+    super.init(game, world, renderer, now);
+    this.idleAnimation = renderer.findAnimation("shark-idle", now);
+    this.downAnimation = renderer.findAnimation("shark-idle", now);
+    this.upAnimation = renderer.findAnimation("shark-idle", now);
+    this.leftAnimation = renderer.findAnimation("shark-idle", now);
+    this.rightAnimation = renderer.findAnimation("shark-idle", now);
+    this.animation = this.idleAnimation;
   }
 
   update(game: Game, world: World, dt: number, events: Event[]) {
