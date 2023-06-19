@@ -1,70 +1,64 @@
 import { Renderer } from "./Renderer";
-import { SpriteSheet, SpriteSheetDefinition } from "./SpriteSheet";
 import { Vector } from "./Vector";
 
-export interface AnimationDefinition {
-  readonly frames: string[];
+export type AnimationTemplateFrame = {
+  readonly id: string;
   readonly duration: number;
-  readonly loop: boolean;
-}
+};
 
 export interface AnimationTemplate {
+  readonly id: string;
   readonly spriteSheetId: string;
-  readonly frames: string[];
-  readonly duration: number;
-  readonly loop: boolean;
+  readonly frames: AnimationTemplateFrame[];
+  readonly totalDuration: number;
 }
 
 export class Animation {
-  readonly spriteSheetId: string;
-  readonly frames: string[];
-  readonly duration: number;
+  readonly template: AnimationTemplate;
   startTime: number;
   readonly loop: boolean = true;
 
-  constructor(
-    spriteSheetId: string,
-    definition: AnimationDefinition,
-    startTime: number,
-    loop: boolean
-  ) {
-    this.spriteSheetId = spriteSheetId;
-    this.frames = definition.frames;
-    this.duration = definition.duration;
+  constructor(template: AnimationTemplate, startTime: number, loop: boolean) {
+    this.template = template;
     this.startTime = startTime;
     this.loop = loop;
   }
 
   static fromTemplate(
     template: AnimationTemplate,
-    startTime: number
+    startTime: number,
+    loop: boolean
   ): Animation {
-    return new Animation(
-      template.spriteSheetId,
-      template,
-      startTime,
-      template.loop
-    );
+    return new Animation(template, startTime, loop);
   }
 
-  getFrame(currentTime: number): string | null {
-    let runTime = currentTime - this.startTime;
+  isDone(currentTime: number): boolean {
+    const runTime = currentTime - this.startTime;
+    return runTime > this.template.totalDuration;
+  }
 
-    if (runTime > this.duration) {
-      if (this.loop) {
-        this.startTime = currentTime;
-        runTime = 0;
-      } else {
-        // dispatch event
+  private getFrame(currentTime: number): AnimationTemplateFrame | null {
+    let runTime = (currentTime - this.startTime);
 
-        return null;
+    let previousFrameStart = 0;
+    for (let i = 0; i < this.template.frames.length; i++) {
+      const frame = this.template.frames[i];
+      const frameDuration = frame.duration / 1000;
+      const frameEnd = previousFrameStart + frameDuration;
+
+      if (runTime >= previousFrameStart && runTime < frameEnd) {
+        return frame;
       }
+
+      previousFrameStart = frameEnd;
     }
 
-    const frameIndex = Math.floor(
-      runTime / (this.duration / this.frames.length)
-    );
-    return this.frames[frameIndex % this.frames.length];
+    if (this.loop) {
+      this.startTime = currentTime;
+      return this.getFrame(currentTime);
+    }
+
+    return null;
   }
 
   render(
@@ -75,43 +69,12 @@ export class Animation {
   ) {
     const frame = this.getFrame(currentTime);
     if (frame) {
-      renderer.renderSprite(this.spriteSheetId, frame, position, rotation);
+      renderer.renderSprite(
+        this.template.spriteSheetId,
+        frame.id,
+        position,
+        rotation
+      );
     }
-  }
-}
-
-export type SpriteSheetAndAnimationsDefinition = {
-  spriteSheet: SpriteSheetDefinition;
-  animations: Record<string, AnimationDefinition>;
-};
-
-export class SpriteSheetAndAnimations {
-  readonly spriteSheet: SpriteSheet;
-  readonly animations: Record<string, AnimationTemplate>;
-
-  constructor(
-    spriteSheet: SpriteSheet,
-    animations: Record<string, AnimationTemplate>
-  ) {
-    this.spriteSheet = spriteSheet;
-    this.animations = animations;
-  }
-
-  static fromDefinition(
-    spriteSheetId: string,
-    definition: SpriteSheetAndAnimationsDefinition
-  ): SpriteSheetAndAnimations {
-    const spriteSheet = SpriteSheet.fromDefinition(definition.spriteSheet);
-    const animations = Object.entries(definition.animations).reduce<
-      Record<string, AnimationTemplate>
-    >(
-      (animations, [id, animationDefinition]) => ({
-        ...animations,
-        [id]: { ...animationDefinition, spriteSheetId },
-      }),
-      {}
-    );
-
-    return new SpriteSheetAndAnimations(spriteSheet, animations);
   }
 }

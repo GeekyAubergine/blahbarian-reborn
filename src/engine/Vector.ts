@@ -1,4 +1,4 @@
-const NEAR_ZERO = 0.0000001;
+export const NEAR_ZERO = 0.0000001;
 
 export class Vector {
   readonly x: number;
@@ -7,6 +7,12 @@ export class Vector {
   constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
+  }
+
+  static ZERO = new Vector(0, 0);
+
+  static Lerp(a: Vector, b: Vector, t: number): Vector {
+    return new Vector(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t);
   }
 
   add(other: Vector): Vector {

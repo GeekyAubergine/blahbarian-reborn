@@ -1,64 +1,95 @@
-import { AnimationDefinition } from "./Animation";
+import { AnimationTemplate, AnimationTemplateFrame } from "./Animation";
 
-type SpriteDefinition = {
-  sx: number;
-  sy: number;
+type AsepriteFrame = {
+  frame: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
+  spriteSourceSize: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
+  sourceSize: {
+    w: number;
+    h: number;
+  };
+  duration: number;
 };
 
-export class Sprite {
-  readonly id: string;
-  readonly sx: number;
-  readonly sy: number;
+export type Sprite = {
+  id: string;
+} & AsepriteFrame;
 
-  constructor(id: string, sx: number, sy: number) {
-    this.id = id;
-    this.sx = sx;
-    this.sy = sy;
-  }
+type FrameTag = {
+  name: string;
+  from: number;
+  to: number;
+  direction: string;
+};
 
-  static fromDefinition(id: string, definition: SpriteDefinition): Sprite {
-    return new Sprite(id, definition.sx, definition.sy);
-  }
+type AsepriteMeta = {
+  image: string;
+  format: string;
+  size: {
+    w: number;
+    h: number;
+  };
+  scale: string;
+  frameTags: FrameTag[];
+};
+
+export type AsepriteFile = {
+  frames: Record<string, AsepriteFrame>;
+  meta: AsepriteMeta;
+};
+
+function cleanSpriteName(name: string): string {
+  return name.replace(".aseprite", "");
 }
 
-export type SpriteSheetDefinition = {
-  sprites: Record<string, SpriteDefinition>;
-  assetFileName: string;
-  rotationPoint: {
-    x: number;
-    y: number;
-  };
-  spriteSize: {
-    width: number;
-    height: number;
-  };
-};
-
 export class SpriteSheet {
+  id: string;
   readonly sprites: Record<string, Sprite>;
+  readonly meta: AsepriteMeta;
+
   readonly assetFileName: string;
-  readonly rotationPoint: {
-    x: number;
-    y: number;
-  };
-
-  readonly spriteSize: {
-    width: number;
-    height: number;
-  };
-
   image: ImageBitmap | null = null;
 
   constructor(
+    id: string,
     sprites: Record<string, Sprite>,
-    assetFileName: string,
-    spriteSize: { width: number; height: number },
-    rotationPoint: { x: number; y: number }
+    meta: AsepriteMeta,
+    assetFileName: string
   ) {
+    this.id = id;
     this.sprites = sprites;
-    this.assetFileName = `assets/${assetFileName}`;
-    this.spriteSize = spriteSize;
-    this.rotationPoint = rotationPoint;
+    this.meta = meta;
+    this.assetFileName = assetFileName;
+  }
+
+  static fromFile(
+    id: string,
+    definition: AsepriteFile,
+    assetFileName: string
+  ): SpriteSheet {
+    const sprites = Object.entries(definition.frames).reduce<
+      Record<string, Sprite>
+    >((acc, [key, frame]) => {
+      const fixedKey = cleanSpriteName(key);
+      return {
+        ...acc,
+        [fixedKey]: {
+          id: fixedKey,
+          ...frame,
+        },
+      };
+    }, {});
+
+    return new SpriteSheet(id, sprites, definition.meta, assetFileName);
   }
 
   async load() {
@@ -80,16 +111,42 @@ export class SpriteSheet {
     });
   }
 
-  static fromDefinition(definition: SpriteSheetDefinition): SpriteSheet {
-    const sprites: Record<string, Sprite> = {};
-    for (const [id, spriteDefinition] of Object.entries(definition.sprites)) {
-      sprites[id] = Sprite.fromDefinition(id, spriteDefinition);
-    }
-    return new SpriteSheet(
-      sprites,
-      definition.assetFileName,
-      definition.spriteSize,
-      definition.rotationPoint
+  findSprite(id: string): Sprite | null {
+    return this.sprites[id] ?? null;
+  }
+
+  findFrame(frame: number): Sprite | null {
+    return this.findSprite(`${this.id}-${frame}`);
+  }
+
+  getAnimationTemplates(): Record<string, AnimationTemplate> {
+    return this.meta.frameTags.reduce<Record<string, AnimationTemplate>>(
+      (acc, tag) => {
+        const frames = Object.entries(this.sprites)
+          .slice(tag.from, tag.to + 1)
+          .map(
+            ([key, frame]): AnimationTemplateFrame => ({
+              id: cleanSpriteName(key),
+              duration: frame.duration,
+            })
+          );
+
+        const totalDuration = frames.reduce(
+          (acc, key) => acc + this.sprites[key.id].duration,
+          0
+        );
+
+        return {
+          ...acc,
+          [tag.name]: {
+            id: tag.name,
+            spriteSheetId: this.id,
+            frames,
+            totalDuration,
+          },
+        };
+      },
+      {}
     );
   }
 }

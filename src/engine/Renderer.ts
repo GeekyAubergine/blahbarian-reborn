@@ -1,89 +1,158 @@
+import { Animation, AnimationTemplate } from "./Animation";
+import { EntityConfig } from "../game/entity/Entity";
 import {
-  Animation,
-  AnimationDefinition,
-  AnimationTemplate,
-  SpriteSheetAndAnimations,
-} from "./Animation";
-import { TILE_SIZE } from "./Constants";
-import { Game } from "./Game";
+  movementToAnimationFromConfig,
+  MovementToAnimationTemplateMap,
+} from "./Movement";
 import { SpriteSheet } from "./SpriteSheet";
 import { Vector } from "./Vector";
-import { World } from "./World";
+import { AssetConfig } from "../game/Asset";
+import { SPRITE_SCALE } from "../game/Constants";
 
 export class Renderer {
-  readonly canvas: HTMLCanvasElement;
-  readonly ctx: CanvasRenderingContext2D;
-  readonly spriteSheets: Record<string, SpriteSheet> = {};
-  animations: Record<string, AnimationTemplate> = {};
+  private readonly canvas: HTMLCanvasElement;
+  private readonly ctx: CanvasRenderingContext2D;
+  private spriteSheets: Record<string, SpriteSheet> = {};
+  private animations: Record<string, AnimationTemplate> = {};
+  private entityNameToMovmentAnimationMapMap: Record<
+    string,
+    MovementToAnimationTemplateMap
+  > = {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
+
+    // @ts-ignore
+    this.ctx.webkitImageSmoothingEnabled = false;
+    // @ts-ignore
+    this.ctx.mozImageSmoothingEnabled = false;
+    this.ctx.imageSmoothingEnabled = false;
   }
 
-  addSpriteSheetAndAnimations(
-    id: string,
-    SpriteSheetAndAnimations: SpriteSheetAndAnimations
-  ) {
-    const { spriteSheet, animations } = SpriteSheetAndAnimations;
+  parseAssetConfig(assetConfig: AssetConfig) {
+    const { name, asepriteFile } = assetConfig;
 
-    this.spriteSheets[id] = spriteSheet;
-    this.animations = { ...this.animations, ...animations };
+    const spriteSheet = SpriteSheet.fromFile(
+      name,
+      asepriteFile,
+      assetConfig.spriteSheetFilePath
+    );
+
+    this.spriteSheets = {
+      ...this.spriteSheets,
+      [name]: spriteSheet,
+    };
+
+    this.animations = {
+      ...this.animations,
+      ...spriteSheet.getAnimationTemplates(),
+    };
   }
 
-  async loadSpriteSheets() {
+  parseEntityConfig(entityConfig: EntityConfig) {
+    const { name, movementAnimationsConfig } = entityConfig;
+
+    this.parseAssetConfig(entityConfig);
+
+    if (movementAnimationsConfig) {
+      this.entityNameToMovmentAnimationMapMap = {
+        ...this.entityNameToMovmentAnimationMapMap,
+        [name]: movementToAnimationFromConfig(this, movementAnimationsConfig),
+      };
+    }
+  }
+
+  async loadAssets() {
     const promises = Object.values(this.spriteSheets).map((spriteSheet) =>
       spriteSheet.load()
     );
 
     await Promise.all(promises);
+
+    console.log(this);
   }
 
-  findAnimation(id: string, now: number): Animation | null {
-    const template = this.animations[id] ?? null;
+  findSpriteSheet(name: string): SpriteSheet | null {
+    return this.spriteSheets[name] ?? null;
+  }
 
-    console.log({ template });
+  findAnimationTemplate(id: string): AnimationTemplate | null {
+    return this.animations[id] ?? null;
+  }
+
+  findMovementAnimationTemplateMap(
+    entityName: string
+  ): MovementToAnimationTemplateMap | null {
+    return this.entityNameToMovmentAnimationMapMap[entityName] ?? null;
+  }
+
+  makeAnimation(
+    id: string,
+    currentTime: number,
+    loop: boolean = false
+  ): Animation | null {
+    const template = this.findAnimationTemplate(id);
 
     if (!template) {
-      throw new Error(`Animation ${id} not found`);
+      return null;
     }
-
-    return Animation.fromTemplate(template, now);
+    return Animation.fromTemplate(template, currentTime, loop);
   }
 
-  renderWorld(game: Game, world: World, now: number) {
+  clear() {
     const { ctx } = this;
     const { width, height } = this.canvas;
-    const { camera } = game;
-
-    ctx.webkitImageSmoothingEnabled = false;
-    ctx.mozImageSmoothingEnabled = false;
-    ctx.imageSmoothingEnabled = false;
 
     ctx.clearRect(0, 0, width, height);
 
-    ctx.fillStyle = "black";
+    // ctx.fillStyle = "black";
 
-    ctx.fillRect(0, 0, width / 2, height / 2);
+    // ctx.fillRect(0, 0, width / 2, height / 2);
+  }
 
-    ctx.save();
+  getSize() {
+    return {
+      width: this.canvas.width,
+      height: this.canvas.height,
+    };
+  }
 
-    ctx.translate(Math.floor(width / 2), Math.floor(height / 2));
+  saveTransform() {
+    this.ctx.save();
+  }
 
-    ctx.scale(camera.scale, camera.scale);
+  restoreTransform() {
+    this.ctx.restore();
+  }
 
-    // ctx.translate(
-    //   Math.floor(-camera.position.x),
-    //   Math.floor(-camera.position.y)
-    // );
+  translate(x: number, y: number) {
+    this.ctx.translate(x, y);
+  }
 
-    for (const entity of world.entities) {
-      entity.render(this, now);
-    }
+  rotate(angle: number) {
+    this.ctx.rotate(angle);
+  }
 
-    world.player.render(this, now);
+  scale(x: number, y: number) {
+    this.ctx.scale(x, y);
+  }
 
-    ctx.restore();
+  renderCircle(
+    position: Vector,
+    radius: number,
+    strokeColor: string,
+    fillColor: string
+  ) {
+    const { ctx } = this;
+
+    ctx.strokeStyle = strokeColor;
+    ctx.fillStyle = fillColor;
+
+    ctx.beginPath();
+    ctx.arc(position.x, position.y, radius, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fill();
   }
 
   renderSprite(
@@ -110,39 +179,46 @@ export class Renderer {
       return;
     }
 
-    const { rotationPoint, spriteSize } = spriteSheet;
-    const { sx, sy } = sprite;
-
     const rotationInRadians = (rotation * Math.PI) / 180;
 
-    const scaleX = TILE_SIZE / spriteSize.width;
-    const scaleY = TILE_SIZE / spriteSize.height;
-
     ctx.save();
-    // ctx.scale(scaleX, scaleY);
     ctx.translate(
-      Math.floor(position.x),
-      Math.floor(position.y)
+      Math.floor(position.x * SPRITE_SCALE),
+      Math.floor(position.y * SPRITE_SCALE)
     );
     ctx.rotate(rotationInRadians);
-    // ctx.fillStyle = "red";
-    // ctx.fillRect(
-    //   Math.floor(-rotationPoint.x * scaleX),
-    //   Math.floor(-rotationPoint.y * scaleY),
-    //   Math.floor(spriteSize.width * scaleX),
-    //   Math.floor(spriteSize.height * scaleY)
-    // );
     ctx.drawImage(
       spriteSheet.image,
-      Math.floor(sx * spriteSize.width),
-      Math.floor(sy * spriteSize.height),
-      Math.floor(spriteSize.width),
-      Math.floor(spriteSize.height),
-      Math.floor(-rotationPoint.x * scaleX),
-      Math.floor(-rotationPoint.y * scaleY),
-      Math.floor(spriteSize.width) * scaleX,
-      Math.floor(spriteSize.height * scaleY)
+      Math.floor(sprite.frame.x),
+      Math.floor(sprite.frame.y),
+      Math.floor(sprite.frame.w),
+      Math.floor(sprite.frame.h),
+      Math.floor((-sprite.frame.w / 2.0) * SPRITE_SCALE),
+      Math.floor((-sprite.frame.h / 2.0) * SPRITE_SCALE),
+      Math.floor(sprite.frame.w * SPRITE_SCALE),
+      Math.floor(sprite.frame.h * SPRITE_SCALE)
     );
     ctx.restore();
+  }
+
+  renderSpriteSheetFrame(
+    spriteSheetId: string,
+    frame: number,
+    position: Vector,
+    rotation: number
+  ) {
+    const spriteSheet = this.spriteSheets[spriteSheetId];
+
+    if (!spriteSheet) {
+      throw new Error(`No sprite sheet with id ${spriteSheetId}`);
+    }
+
+    const sprite = spriteSheet.findFrame(frame);
+
+    if (!sprite) {
+      throw new Error(`No sprite with frame ${frame}`);
+    }
+
+    this.renderSprite(spriteSheetId, sprite.id, position, rotation);
   }
 }
