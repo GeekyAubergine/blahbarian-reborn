@@ -13,8 +13,13 @@ use bevy_ecs_tilemap::{
     tiles::{TileBundle, TilePos, TileStorage, TileTextureIndex},
     TilemapBundle, TilemapPlugin,
 };
+use physics::Collider;
+use weapon::PlayerWeapon;
 
 const CAMERA_OFFSET_FROM_PLAYER: f32 = 64.0;
+
+mod physics;
+mod weapon;
 
 mod sprites {
     use bevy_aseprite::aseprite;
@@ -24,9 +29,46 @@ mod sprites {
     aseprite!(pub NailAnim, "nail.aseprite");
 }
 
+#[derive(Component, Debug, PartialEq, Eq)]
+pub enum EnitityAllegence {
+    Player,
+    Enemy,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum CameraFollowMode {
+    Sticky,
+    Leading,
+}
+
+#[derive(Resource)]
+pub struct Settings {
+    camera_follow_mode: CameraFollowMode,
+}
+
+impl Settings {
+    pub fn new() -> Self {
+        Self {
+            camera_follow_mode: CameraFollowMode::Sticky,
+        }
+    }
+}
+
 #[derive(Component)]
 struct Player {
     speed: f32,
+    weapon_one: PlayerWeapon,
+    weapon_two: Option<PlayerWeapon>,
+}
+
+impl Player {
+    pub fn new() -> Self {
+        Player {
+            speed: 200.0,
+            weapon_one: PlayerWeapon::axe(),
+            weapon_two: None,
+        }
+    }
 }
 
 #[derive(Component)]
@@ -38,8 +80,9 @@ struct Health {
 }
 
 #[derive(Component)]
-struct Collider {
-    radius: f32,
+struct Projectile {
+    velocity: Vec3,
+    damage: u32,
 }
 
 #[derive(Component)]
@@ -87,12 +130,6 @@ impl Enemy {
             Enemy::Table { last_melee } => *last_melee = time,
         }
     }
-}
-
-#[derive(Component)]
-struct Projectile {
-    velocity: Vec2,
-    damage: u32,
 }
 
 fn setup_tiles(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -166,19 +203,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 
     commands.spawn((
+        Collider::circle(32.),
         AsepriteBundle {
             aseprite: asset_server.load(sprites::PlayerAnim::PATH),
             animation: AsepriteAnimation::from(sprites::PlayerAnim::tags::IDLE_LEFT),
             transform: Transform {
                 scale: Vec3::splat(3.),
-                translation: Vec3::new(0., 0., 0.),
                 ..Default::default()
             },
             ..Default::default()
         },
-        Player { speed: 200.0 },
+        Player::new(),
         Health { health: 100 },
-        Collider { radius: 42.0 },
+        EnitityAllegence::Player,
     ));
 
     spawn_enemy(commands, asset_server);
@@ -186,6 +223,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn spawn_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
+        Collider::circle(32.),
         AsepriteBundle {
             aseprite: asset_server.load(sprites::TableAnim::PATH),
             animation: AsepriteAnimation::from(sprites::TableAnim::tags::IDLE),
@@ -198,7 +236,7 @@ fn spawn_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         Enemy::Table { last_melee: 0.0 },
         Health { health: 100 },
-        Collider { radius: 32.0 },
+        EnitityAllegence::Enemy,
     ));
 }
 
@@ -226,6 +264,36 @@ fn update_player_position(
     }
 }
 
+fn move_projectiles(mut projectile_query: Query<(&mut Transform, &Projectile)>, time: Res<Time>) {
+    for (mut transform, projectile) in projectile_query.iter_mut() {
+        transform.translation += time.delta_seconds() * projectile.velocity;
+    }
+}
+
+fn player_activates_weapon(
+    mut commands: Commands,
+    mut player_query: Query<(&mut Player, &Transform)>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    buttons: Res<Input<MouseButton>>,
+    time: Res<Time>,
+) {
+    if let Some(cursor_position) = window.single().cursor_position() {
+        let cursor_offset_from_center =
+            calculate_player_direction_from_mouse(&cursor_position, &window.single())
+                .clamp_length_max(CAMERA_OFFSET_FROM_PLAYER);
+
+        if let Ok((mut player, player_transform)) = player_query.get_single_mut() {
+            if buttons.just_pressed(MouseButton::Left) && player.weapon_one.can_attack() {
+                player.weapon_one.attack(
+                    commands,
+                    player_transform.translation,
+                    cursor_offset_from_center.normalize_or_zero(),
+                );
+            }
+        }
+    }
+}
+
 fn enemy_follow_player(
     mut player_query: Query<&Transform, (With<Player>, Without<Enemy>)>,
     mut enemy_query: Query<(&Enemy, &mut Transform)>,
@@ -249,12 +317,7 @@ fn enemy_melee_player(
         player_query.get_single_mut()
     {
         for (mut enemy, enemy_transform, enemy_collider) in enemy_query.iter_mut() {
-            let distance = player_transform
-                .translation
-                .distance(enemy_transform.translation);
-            if distance < player_collider.radius + enemy_collider.radius
-                && enemy.can_melee(time.elapsed_seconds())
-            {
+            if enemy_collider.is_colliding(enemy_transform, player_collider, player_transform) {
                 player_health.health -= enemy.melee_damage();
                 enemy.set_last_melee(time.elapsed_seconds());
                 println!("Player health: {}", player_health.health);
@@ -263,26 +326,78 @@ fn enemy_melee_player(
     }
 }
 
+fn projectile_hurt_entity(
+    mut commands: Commands,
+    projectile_query: Query<(
+        Entity,
+        &Projectile,
+        &Transform,
+        &Collider,
+        &EnitityAllegence,
+    )>,
+    mut health_query: Query<(&mut Health, &Collider, &Transform, &EnitityAllegence)>,
+) {
+    for (
+        projectile_entity,
+        projectile,
+        projectile_transform,
+        projectile_collider,
+        protectile_allegence,
+    ) in projectile_query.iter()
+    {
+        for (mut health, entity_collider, entity_tranform, entity_allegence) in
+            health_query.iter_mut()
+        {
+            if entity_allegence == protectile_allegence {
+                continue;
+            }
+
+            if entity_collider.is_colliding(
+                entity_tranform,
+                projectile_collider,
+                projectile_transform,
+            ) {
+                health.health -= projectile.damage as i32;
+                println!("Entity health: {}", health.health);
+                commands.entity(projectile_entity).despawn();
+            }
+        }
+    }
+}
+
+fn calculate_player_direction_from_mouse(cursor_position: &Vec2, window: &Window) -> Vec3 {
+    let width = window.width();
+    let height = window.height();
+
+    Vec3::new(
+        cursor_position.x - width / 2.0,
+        -(cursor_position.y - height / 2.0),
+        0.0,
+    )
+}
+
 fn update_camera_goal_position(
     player_query: Query<&Transform, (With<Player>, Without<CameraGoal>)>,
     mut camera_goal_query: Query<&mut Transform, (With<CameraGoal>, Without<Player>)>,
     window: Query<&Window, With<PrimaryWindow>>,
+    settings: Res<Settings>,
 ) {
     if let Ok(player_transform) = player_query.get_single() {
         if let Ok(mut camera_goal_transform) = camera_goal_query.get_single_mut() {
             if let Some(position) = window.single().cursor_position() {
-                let width = window.single().width();
-                let height = window.single().height();
+                match settings.camera_follow_mode {
+                    CameraFollowMode::Sticky => {
+                        camera_goal_transform.translation = player_transform.translation;
+                    }
+                    CameraFollowMode::Leading => {
+                        let cursor_offset_from_center =
+                            calculate_player_direction_from_mouse(&position, window.single())
+                                .clamp_length_max(CAMERA_OFFSET_FROM_PLAYER);
 
-                let cursor_offset_from_center = Vec3::new(
-                    position.x - width / 2.0,
-                    -(position.y - height / 2.0),
-                    0.0,
-                )
-                .clamp_length_max(CAMERA_OFFSET_FROM_PLAYER);
-
-                camera_goal_transform.translation =
-                    player_transform.translation + cursor_offset_from_center;
+                        camera_goal_transform.translation =
+                            player_transform.translation + cursor_offset_from_center;
+                    }
+                }
             } else {
                 camera_goal_transform.translation = player_transform.translation;
             }
@@ -302,23 +417,17 @@ fn camera_move_to_goal_position(
     }
 }
 
-// fn spritemap_fix(mut ev_asset: EventReader<AssetEvent<Image>>, mut assets: ResMut<Assets<Image>>) {
-//     for ev in ev_asset.iter() {
-//         if let AssetEvent::Created { handle } = ev {
-//             if let Some(texture) = assets.get_mut(handle) {
-//                 texture.sampler_descriptor = ImageSampler::nearest()
-//             }
-//         }
-//     }
-// }
-
 fn render_debug(
     mut gizmos: Gizmos,
     collider_query: Query<(&Collider, &Transform)>,
     camera_goal_position_query: Query<&Transform, With<CameraGoal>>,
 ) {
-    for (collider, tranform) in collider_query.iter() {
-        gizmos.circle_2d(tranform.translation.truncate(), collider.radius, Color::RED);
+    for (collider, transform) in collider_query.iter() {
+        match collider {
+            Collider::Circle { radius } => {
+                gizmos.circle_2d(transform.translation.truncate(), *radius, Color::RED);
+            }
+        }
     }
 
     if let Ok(camera_goal_transform) = camera_goal_position_query.get_single() {
@@ -346,15 +455,19 @@ fn main() {
         .add_plugins(AsepritePlugin)
         .add_plugins(TilemapPlugin)
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
+        .insert_resource(Settings::new())
         .add_systems(Startup, (setup, setup_tiles))
         .add_systems(
             Update,
             (
                 update_player_position,
+                player_activates_weapon,
+                move_projectiles,
                 enemy_melee_player,
                 enemy_follow_player,
                 update_camera_goal_position,
                 camera_move_to_goal_position,
+                projectile_hurt_entity,
                 #[cfg(debug_assertions)]
                 close_on_esc,
                 #[cfg(debug_assertions)]
