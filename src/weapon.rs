@@ -2,7 +2,11 @@ use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 
-use crate::{Projectile, EnitityAllegence, physics::Collider};
+use crate::{
+    physics::components::{Collider, Velocity},
+    projectile::{components::Projectile, ProjectileBundle},
+    EnitityAllegence,
+};
 
 const AXE_VELOCITY: f32 = 512.;
 
@@ -18,15 +22,13 @@ fn spawn_axe(mut commands: Commands, player_transform: Vec3, player_facing: Vec3
 
     let collider = Collider::circle(16.);
 
-    commands.spawn((
+    commands.spawn(ProjectileBundle {
         transform,
+        velocity: Velocity::from_vec(player_facing * AXE_VELOCITY),
         collider,
-        Projectile {
-            velocity: player_facing * AXE_VELOCITY,
-            damage: 25,
-        },
-        EnitityAllegence::Player,
-    ));
+        projectile: Projectile::new(25),
+        allegence: EnitityAllegence::Player,
+    });
 }
 
 impl PlayerWeapon {
@@ -34,13 +36,17 @@ impl PlayerWeapon {
         Self::Axe { last_attack: None }
     }
 
-    pub fn attack(&self, commands: Commands, player_transform: Vec3, player_facing: Vec3) {
+    pub fn attack(&mut self, commands: Commands, player_transform: Vec3, player_facing: Vec3) {
         if !self.can_attack() {
             return;
         }
 
         match self {
             Self::Axe { .. } => spawn_axe(commands, player_transform, player_facing),
+        }
+
+        match self {
+            Self::Axe { last_attack } => *last_attack = Some(Instant::now()),
         }
     }
 

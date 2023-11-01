@@ -17,4 +17,5 @@ opt-level = 3
 bevy = "0.11.3"
 bevy_aseprite = "0.11.0"
 bevy_ecs_tilemap = "0.11.1"
+bevy_health_bar3d = "1.4.4"
 thiserror = "1.0.49"

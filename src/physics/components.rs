@@ -1,6 +1,23 @@
 use bevy::prelude::*;
 
 #[derive(Component)]
+pub struct Velocity(Vec3);
+
+impl Velocity {
+    pub fn from_vec(vec: Vec3) -> Self {
+        Self(vec)
+    }
+
+    pub fn zero() -> Self {
+        Self(Vec3::ZERO)
+    }
+
+    pub fn as_vec(&self) -> Vec3 {
+        self.0
+    }
+}
+
+#[derive(Component)]
 pub enum Collider {
     Circle { radius: f32 },
 }
@@ -23,21 +40,6 @@ impl Collider {
                     .distance_squared(other_transform.translation)
                     < (r1 + r2).powi(2)
             }
-        }
-    }
-}
-
-#[derive(Bundle)]
-struct ColliderBundle {
-    transform: Transform,
-    collider: Collider,
-}
-
-impl ColliderBundle {
-    pub fn circle(radius: f32, transform: Transform) -> Self {
-        Self {
-            transform,
-            collider: Collider::circle(radius),
         }
     }
 }
