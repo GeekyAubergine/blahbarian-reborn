@@ -11,7 +11,9 @@ use bevy_ecs_tilemap::{
     tiles::{TileBundle, TilePos, TileStorage, TileTextureIndex},
     TilemapBundle, TilemapPlugin,
 };
-use enemy::{spawn_enemy, EnemyPlugin};
+use bevy_prng::ChaCha8Rng;
+use bevy_rand::prelude::EntropyPlugin;
+use enemy::EnemyPlugin;
 use health::{components::Health, HealthPlugin};
 use physics::{components::Collider, PhysicsPlugin};
 use player::{components::Player, PlayerPlugin};
@@ -158,8 +160,6 @@ fn setup(
             ..Default::default()
         },
     ));
-
-    spawn_enemy(commands, asset_server, meshes, materials);
 }
 
 fn calculate_player_direction_from_mouse(cursor_position: &Vec2, window: &Window) -> Vec3 {
@@ -240,6 +240,9 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
         )
+        .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
+        .insert_resource(Settings::new())
+        .add_plugins(EntropyPlugin::<ChaCha8Rng>::default())
         .add_event::<EntityTookDamage>()
         .configure_set(Update, GameSet::PlayerInput.before(GameSet::Physics))
         .configure_set(Update, GameSet::Physics.before(GameSet::DealDamage))
@@ -255,8 +258,6 @@ fn main() {
             HealthPlugin,
         ))
         // .add_plugins(HealthBarPlugin::<Health>::default())
-        .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
-        .insert_resource(Settings::new())
         .add_systems(Startup, (setup, setup_tiles))
         .add_systems(Update, (camera_move_to_goal_position,).in_set(GameSet::Ui))
         .add_systems(
