@@ -1,8 +1,9 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::{
-    calculate_player_direction_from_mouse, physics::components::Velocity, CameraGoal,
-    CAMERA_OFFSET_FROM_PLAYER,
+use crate::game::{
+    calculate_player_direction_from_mouse,
+    camera::{GameCameraGoal, CAMERA_OFFSET_FROM_PLAYER},
+    physics::components::Velocity,
 };
 
 use super::components::Player;
@@ -12,7 +13,7 @@ pub fn player_input(
     window: Query<&Window, With<PrimaryWindow>>,
     keyboard_input: Res<Input<KeyCode>>,
     buttons: Res<Input<MouseButton>>,
-    mut player_query: Query<(&mut Player, &Transform, &mut Velocity), Without<CameraGoal>>,
+    mut player_query: Query<(&mut Player, &Transform, &mut Velocity), Without<GameCameraGoal>>,
 ) {
     if let Ok((mut player, transform, mut velocity)) = player_query.get_single_mut() {
         let mut direction = Vec3::ZERO;
@@ -46,4 +47,3 @@ pub fn player_input(
         }
     }
 }
-

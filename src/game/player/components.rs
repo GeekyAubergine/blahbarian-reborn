@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::weapon::PlayerWeapon;
+use crate::game::weapon::PlayerWeapon;
 
 #[derive(Component)]
 pub struct Player {

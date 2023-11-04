@@ -1,7 +1,9 @@
 use bevy::{prelude::*, transform::commands};
 use bevy_aseprite::{anim::AsepriteAnimation, AsepriteBundle};
 
-use crate::{
+use self::{components::Player, systems::player_input};
+
+use super::{
     health::{
         components::{Health, HealthBar},
         spawn_health_bar,
@@ -9,8 +11,6 @@ use crate::{
     physics::components::{Collider, Velocity},
     EnitityAllegence, GameSet,
 };
-
-use self::{components::Player, systems::player_input};
 
 pub mod components;
 pub mod systems;

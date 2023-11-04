@@ -2,11 +2,7 @@ use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 
-use crate::{
-    physics::components::{Collider, Velocity},
-    projectile::{components::Projectile, ProjectileBundle},
-    EnitityAllegence,
-};
+use super::{physics::components::{Collider, Velocity}, projectile::{ProjectileBundle, components::Projectile}, EnitityAllegence};
 
 const AXE_VELOCITY: f32 = 512.;
 

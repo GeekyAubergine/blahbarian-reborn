@@ -4,19 +4,9 @@ use bevy_prng::ChaCha8Rng;
 use bevy_rand::resource::GlobalEntropy;
 use rand_core::RngCore;
 
-use crate::{
-    health::{
-        components::{Health, HealthBar},
-        spawn_health_bar,
-    },
-    physics::components::{Collider, Velocity},
-    player::components::Player,
-    sprites, EnitityAllegence, EntityTookDamage,
-};
+use crate::game::{physics::components::{Collider, Velocity}, player::components::Player, EnitityAllegence, health::{components::{Health, HealthBar}, spawn_health_bar}, EntityTookDamage};
 
-use super::{components::Enemy, EnemyBundle, EnemySpawnConfig};
-
-
+use super::{components::Enemy, sprites, EnemyBundle, EnemySpawnConfig};
 
 pub fn spawn_enemy(
     mut commands: Commands,

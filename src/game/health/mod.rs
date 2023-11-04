@@ -4,12 +4,12 @@ use bevy::{
     transform::commands,
 };
 
-use crate::GameSet;
-
 use self::{
     components::{Health, HealthBar},
     systems::{take_damage, update_healthbar},
 };
+
+use super::GameSet;
 
 pub mod components;
 pub mod systems;

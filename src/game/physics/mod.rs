@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::GameSet;
-
 use self::{components::Collider, systems::update_positions};
+
+use super::GameSet;
 
 pub mod components;
 pub mod systems;

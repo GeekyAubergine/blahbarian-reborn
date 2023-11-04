@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{physics::components::Collider, EnitityAllegence, EntityTookDamage, health::components::Health};
+use crate::game::{physics::components::Collider, EnitityAllegence, EntityTookDamage};
 
 use super::components::Projectile;
 

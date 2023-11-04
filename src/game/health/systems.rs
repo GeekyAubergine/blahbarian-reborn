@@ -1,16 +1,17 @@
 use bevy::{prelude::*, sprite::Mesh2dHandle};
 
-use crate::EntityTookDamage;
+use crate::game::EntityTookDamage;
 
 use super::components::{Health, HealthBar};
 
 pub fn update_healthbar(
     mut meshes: ResMut<Assets<Mesh>>,
     bar_query: Query<(&Mesh2dHandle, &HealthBar)>,
-    entity_query: Query<&Health>,
+    entity_query: Query<&Health, Changed<Health>>,
 ) {
     for (mesh_handle, health_bar) in bar_query.iter() {
         if let Ok(health) = entity_query.get(health_bar.health_entity()) {
+            println!("update_healthbar");
             let new_width = health_bar.max_width() * health.health_percentage();
 
             let quad = Mesh::from(shape::Quad::new(Vec2::new(new_width, 2.)));

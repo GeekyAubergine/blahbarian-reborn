@@ -2,9 +2,12 @@ use bevy::prelude::*;
 
 use systems::projectile_hurt_entity;
 
-use crate::{GameSet, physics::components::{Velocity, Collider}, EnitityAllegence};
-
 use self::components::Projectile;
+
+use super::{
+    physics::components::{Collider, Velocity},
+    EnitityAllegence, GameSet,
+};
 
 pub mod components;
 pub mod systems;

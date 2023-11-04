@@ -3,18 +3,15 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy_aseprite::{anim::AsepriteAnimation, AsepriteBundle};
 
-use crate::{
-    health::{
-        components::{Health, HealthBar},
-        spawn_health_bar,
-    },
-    physics::components::{Collider, Velocity},
-    EnitityAllegence, EntityTookDamage, GameSet,
-};
-
 use self::{
     components::Enemy,
     systems::{enemy_follow_player, enemy_melee_player, spawn_enemy},
+};
+
+use super::{
+    health::components::Health,
+    physics::components::{Collider, Velocity},
+    EnitityAllegence, GameSet,
 };
 
 pub mod components;
@@ -49,6 +46,7 @@ impl EnemySpawnConfig {
     pub fn reset(&mut self) {
         self.spawn_timer.reset();
         self.spawn_interval *= 1.0 - self.spawn_difficulty;
+        dbg!(self.spawn_interval);
     }
 
     pub fn finished(&self) -> bool {
