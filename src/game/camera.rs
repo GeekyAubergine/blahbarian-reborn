@@ -2,7 +2,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::app::Settings;
 
-use super::{calculate_player_direction_from_mouse, player::components::Player, GameSet};
+use super::{calculate_player_direction_from_mouse, player::Player, GameSet};
 
 pub const CAMERA_OFFSET_FROM_PLAYER: f32 = 64.0;
 

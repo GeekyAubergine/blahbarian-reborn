@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use crate::game::animated::AnimatedDirection;
-
+use super::{animated::AnimatedDirection, GameSet};
 #[derive(Component)]
 pub struct Velocity(Vec3);
 
@@ -63,5 +62,37 @@ impl Collider {
                     < (r1 + r2).powi(2)
             }
         }
+    }
+}
+
+#[derive(Bundle)]
+struct ColliderBundle {
+    pub transform: Transform,
+    pub collider: Collider,
+}
+
+fn render_debug(mut gizmos: Gizmos, collider_query: Query<(&Collider, &Transform)>) {
+    for (collider, transform) in collider_query.iter() {
+        match collider {
+            Collider::Circle { radius } => {
+                gizmos.circle_2d(transform.translation.truncate(), *radius, Color::RED);
+            }
+        }
+    }
+}
+
+pub fn update_positions(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
+    for (mut transform, velocity) in query.iter_mut() {
+        transform.translation += velocity.as_vec() * time.delta_seconds();
+    }
+}
+
+pub struct PhysicsPlugin;
+
+impl Plugin for PhysicsPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (update_positions).in_set(GameSet::Physics));
+        #[cfg(debug_assertions)]
+        app.add_systems(Update, (render_debug,).in_set(GameSet::Ui));
     }
 }

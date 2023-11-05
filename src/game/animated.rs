@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_aseprite::anim::{AsepriteAnimation, self};
 
-use super::{physics::components::Velocity, GameSet};
+use super::{physics::Velocity, GameSet};
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnimatedDirection {

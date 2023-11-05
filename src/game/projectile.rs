@@ -1,8 +1,33 @@
 use bevy::prelude::*;
 
-use crate::game::{physics::components::Collider, EnitityAllegence, EntityTookDamage};
+use super::{
+    physics::{Collider, Velocity},
+    EnitityAllegence, GameSet, EntityTookDamage,
+};
 
-use super::components::Projectile;
+#[derive(Component)]
+pub struct Projectile {
+    damage: i32,
+}
+
+impl Projectile {
+    pub fn new(damage: i32) -> Self {
+        Self { damage }
+    }
+
+    pub fn damage(&self) -> i32 {
+        self.damage
+    }
+}
+
+#[derive(Bundle)]
+pub struct ProjectileBundle {
+    pub transform: Transform,
+    pub velocity: Velocity,
+    pub collider: Collider,
+    pub projectile: Projectile,
+    pub allegence: EnitityAllegence,
+}
 
 pub fn projectile_hurt_entity(
     mut commands: Commands,
@@ -40,5 +65,14 @@ pub fn projectile_hurt_entity(
                 commands.entity(projectile_entity).despawn();
             }
         }
+    }
+}
+
+
+pub struct ProjectilePlugin;
+
+impl Plugin for ProjectilePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (projectile_hurt_entity).in_set(GameSet::DealDamage));
     }
 }

@@ -1,31 +1,12 @@
 use app::AppPlugin;
-use bevy::{
-    prelude::*,
-    window::{close_on_esc, PrimaryWindow},
-};
+use bevy::{prelude::*, window::close_on_esc};
 use bevy_aseprite::AsepritePlugin;
-use bevy_ecs_tilemap::{
-    prelude::{
-        get_tilemap_center_transform, TilemapGridSize, TilemapId, TilemapSize, TilemapTexture,
-        TilemapTileSize, TilemapType,
-    },
-    tiles::{TileBundle, TilePos, TileStorage, TileTextureIndex},
-    TilemapBundle, TilemapPlugin,
-};
 use bevy_prng::ChaCha8Rng;
 use bevy_rand::prelude::EntropyPlugin;
 use game::GamePlugin;
 
 mod app;
 mod game;
-
-mod sprites {
-    use bevy_aseprite::aseprite;
-
-    aseprite!(pub PlayerAnim, "shark.aseprite");
-    aseprite!(pub TableAnim, "table.aseprite");
-    aseprite!(pub NailAnim, "nail.aseprite");
-}
 
 fn main() {
     App::new()

@@ -16,7 +16,7 @@ use self::{
     enemy::EnemyPlugin,
     health::HealthPlugin,
     physics::PhysicsPlugin,
-    player::{components::Player, PlayerPlugin},
+    player::{Player, PlayerPlugin},
     projectile::ProjectilePlugin, animated::AnimatedPlugin,
 };
 
