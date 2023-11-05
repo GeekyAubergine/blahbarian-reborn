@@ -2,7 +2,6 @@ use bevy::{
     prelude::*,
     window::{close_on_esc, PrimaryWindow},
 };
-use bevy_aseprite::AsepritePlugin;
 use bevy_ecs_tilemap::{
     prelude::{
         get_tilemap_center_transform, TilemapGridSize, TilemapId, TilemapSize, TilemapTexture,
@@ -18,9 +17,10 @@ use self::{
     health::HealthPlugin,
     physics::PhysicsPlugin,
     player::{components::Player, PlayerPlugin},
-    projectile::ProjectilePlugin,
+    projectile::ProjectilePlugin, animated::AnimatedPlugin,
 };
 
+pub mod animated;
 pub mod camera;
 pub mod enemy;
 pub mod health;
@@ -37,6 +37,7 @@ enum GameSet {
     Ai,
     DealDamage,
     ResolveDamage,
+    Animation,
     Ui,
 }
 
@@ -136,7 +137,8 @@ impl Plugin for GamePlugin {
         app.configure_set(Update, GameSet::PlayerInput.before(GameSet::Physics));
         app.configure_set(Update, GameSet::Physics.before(GameSet::DealDamage));
         app.configure_set(Update, GameSet::DealDamage.before(GameSet::ResolveDamage));
-        app.configure_set(Update, GameSet::ResolveDamage.before(GameSet::Ui));
+        app.configure_set(Update, GameSet::ResolveDamage.before(GameSet::Animation));
+        app.configure_set(Update, GameSet::Animation.before(GameSet::Ui));
         app.add_plugins((
             GameCameraPlugin,
             TilemapPlugin,
@@ -145,6 +147,7 @@ impl Plugin for GamePlugin {
             EnemyPlugin,
             ProjectilePlugin,
             HealthPlugin,
+            AnimatedPlugin,
         ));
         app.add_systems(Startup, (setup_tiles));
     }

@@ -4,6 +4,7 @@ use bevy_aseprite::{anim::AsepriteAnimation, AsepriteBundle};
 use self::{components::Player, systems::player_input};
 
 use super::{
+    animated::{Animated, AnimatedBundle, AnimatedDirection},
     health::{
         components::{Health, HealthBar},
         spawn_health_bar,
@@ -29,6 +30,7 @@ pub struct PlayerBundle {
     allegence: EnitityAllegence,
     health: Health,
     velocity: Velocity,
+    animated: AnimatedBundle,
 }
 
 fn spawn_player(
@@ -42,7 +44,7 @@ fn spawn_player(
             collider: Collider::circle(32.),
             aesprite: AsepriteBundle {
                 aseprite: asset_server.load(sprites::PlayerAnim::PATH),
-                animation: AsepriteAnimation::from(sprites::PlayerAnim::tags::IDLE_LEFT),
+                animation: AsepriteAnimation::from(sprites::PlayerAnim::tags::IDLE),
                 transform: Transform {
                     scale: Vec3::splat(3.),
                     translation: Vec3::new(0., 0., 1.),
@@ -54,6 +56,16 @@ fn spawn_player(
             allegence: EnitityAllegence::Player,
             health: Health::new(100),
             velocity: Velocity::zero(),
+            animated: AnimatedBundle {
+                animated: Animated::new(
+                    Some(sprites::PlayerAnim::tags::IDLE.to_string()),
+                    sprites::PlayerAnim::tags::RUN_DOWN_LEFT.to_string(),
+                    sprites::PlayerAnim::tags::RUN_DOWN_RIGHT.to_string(),
+                    sprites::PlayerAnim::tags::RUN_UP_LEFT.to_string(),
+                    sprites::PlayerAnim::tags::RUN_UP_RIGHT.to_string(),
+                ),
+                animated_direction: AnimatedDirection::default(),
+            },
         })
         .id();
 
